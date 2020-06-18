@@ -6,7 +6,7 @@ RUN yum -y install php73 httpd mod_ssl php73-php wget php73-php-mbstring php73-p
 RUN sed -i -e '/pam_loginuid.so/s/^/#/' /etc/pam.d/crond
 RUN chmod 0644 /etc/crontab
 
-COPY ./data/install.sh install.sh
+COPY data install.sh
 RUN ./install.sh
 VOLUME ./data /data
 EXPOSE 80 443
