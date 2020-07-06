@@ -31,7 +31,7 @@ class sspmod_esmo_Auth_Source_SP extends SimpleSAML_Auth_Source {
     
     
     /**
-     * The metadata of the target microservice (a random ACM ms).
+     * The metadata of the target microservice (a random config.apiClass ms).
      *
      * @var SimpleSAML_Configuration.
      */
@@ -63,12 +63,12 @@ class sspmod_esmo_Auth_Source_SP extends SimpleSAML_Auth_Source {
 
         $this->msId = $this->metadata->getString('msId');
         
+        $apiClass = $this->metadata->getString("apiClass", 'ACM');
         
-        
-        //Get the microservice metadata of the ACM
+        //Get the microservice metadata of the config.apiClass
         try{
-            $this->idpMetadata = sspmod_esmo_Tools::getMsMetadataByClass("ACM", $this->metadata->getString("msRegistry"));
-            SimpleSAML_Logger::debug('ESMO randomly chosen ACM metadata: '.print_r($this->idpMetadata,true));
+            $this->idpMetadata = sspmod_esmo_Tools::getMsMetadataByClass($apiClass, $this->metadata->getString("msRegistry"));
+            SimpleSAML_Logger::debug('ESMO randomly chosen -'.$apiClass.'- metadata: '.print_r($this->idpMetadata,true));
         } catch (Exception $e) {
             throw new SimpleSAML_Error_Exception($e->getMessage());
         }
@@ -132,7 +132,7 @@ class sspmod_esmo_Auth_Source_SP extends SimpleSAML_Auth_Source {
     
 
 	/**
-	 * Retrieve the metadata of the called ACM.
+	 * Retrieve the metadata of the called config.apiClass.
 	 *
 	 * @param string $entityId  The entity id of the IdP.
 	 * @return SimpleSAML_Configuration  The metadata of the IdP.
@@ -149,7 +149,7 @@ class sspmod_esmo_Auth_Source_SP extends SimpleSAML_Auth_Source {
 	/**
 	 * Start login.
 	 *
-	 * This function saves the information about the login, and redirects to the ACM.
+	 * This function saves the information about the login, and redirects to the config.apiClass.
 	 *
 	 * @param array &$state  Information about the current authentication.
 	 */
@@ -162,7 +162,8 @@ class sspmod_esmo_Auth_Source_SP extends SimpleSAML_Auth_Source {
         SimpleSAML_Logger::info("metadata: ".print_r($this->metadata,true));
         
         
-        //Go on with the authentication (well, pass control to the ACM in our case)
+        //Go on with the authentication (well, pass control to the destination
+        // ms specified in config.apiClass in our case)
         $this->startSSO($this->idp, $state);
         assert('FALSE');   
 	}
@@ -172,7 +173,7 @@ class sspmod_esmo_Auth_Source_SP extends SimpleSAML_Auth_Source {
     
     
 	/**
-	 * Send a SSO request to the ACM.
+	 * Send a SSO request to the config.apiClass ms.
 	 *
 	 * @param string $idp  The entity ID of the IdP.
 	 * @param array $state  The state array for the current authentication.
@@ -201,16 +202,37 @@ class sspmod_esmo_Auth_Source_SP extends SimpleSAML_Auth_Source {
         
         //We use the remote SP as the issuer of the internal SP request object
         $state['esmo:req:issuer']  = $state['eidas:requestData']['issuer'];
-        
-        
-        
+
+        //Get the api class and call to pass the request to
+        $state['esmo:req:apiClass']  = $this->metadata->getString("apiClass", 'ACM');
+        $state['esmo:req:apiCall']  = $this->metadata->getString("apiCall", 'acmRequest');
+
+
+        //Intercept source attribute and remove from request // TODO: Works?
+        $spRequestSource = '';
+        if(isset($state['eidas:requestData']['requestedAttributes']))
+            foreach ($state['eidas:requestData']['requestedAttributes'] as $i => $reqAttr){
+                if($reqAttr['name'] == 'SealIdSource'){
+                    $spRequestSource = $reqAttr['values'][0];
+                    unset($state['eidas:requestData']['requestedAttributes'][$i]);
+                    break;
+                }
+            }
+        // If not, search it in IdPList
+        if($spRequestSource == ''){
+            if(isset($state['saml:IDPList'][0])){
+                $spRequestSource = $state['saml:IDPList'][0];
+            }
+        }
+
+
         //Marshall state var in json
         $stateJson = json_encode($state, JSON_UNESCAPED_UNICODE);
-        
-        
+
+
         //Build request variable taking stuff from the state object
         $req = sspmod_esmo_Esmo::buildEsmoRequest($state);
-        
+
         //Marshall request var in json
         $reqJson = json_encode($req, JSON_UNESCAPED_UNICODE);
         
@@ -224,15 +246,28 @@ class sspmod_esmo_Auth_Source_SP extends SimpleSAML_Auth_Source {
         
         
         //Prepare the list of session variables to write in session
-        $sessionVariables = array(
+        $noWriteList  = $this->metadata->getArray("noWriteParams", Array());
+        $sessionVariablesAux = array(
             'spRequest'   => $reqJson,
             'spMetadata'  => $remoteSpMetaJson,
             'samlMSstate' => $stateJson,
+            'spRequestEP' => $this->metadata->getString("spRequestEP", 'auth'),
+            'spRequestSource' => $spRequestSource,
+            // TODO: ADD the SEAL vars here // All SET now?
         );
-        
+
+        $sessionVariables = array();
+        foreach ($sessionVariablesAux as $sessVar => $sessValue){
+            if( ! in_array($sessVar, $noWriteList)){
+                $sessionVariables[$sessVar] = $sessValue;
+            }
+        }
+
+
                 
         
-        sspmod_esmo_Esmo::redirect($this->metadata,$this->idpMetadata,'ACM','acmRequest',$sessionVariables);
+        sspmod_esmo_Esmo::redirect($this->metadata,$this->idpMetadata,
+            $state['esmo:req:apiClass'],$state['esmo:req:apiCall'],$sessionVariables);
         
         assert('FALSE');   
     }

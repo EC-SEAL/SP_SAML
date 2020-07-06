@@ -82,8 +82,9 @@ class sspmod_esmo_Esmo
                     $isMandatory = $attr['isRequired'];
                 
                 
-                // TODO: add support to read the values of the attributes (--still a TODO on the eIDAs lib--)
-                $values = NULL;
+                // TODO: add support to read the values of the attributes // TODO: does it work?
+                //$values = NULL;
+                $values = $attr['values'];
                 //$values = array();
 
                 $req['attributes'][] = array (
@@ -113,7 +114,7 @@ class sspmod_esmo_Esmo
         }
         
         
-        // Add additional data that might be useful for the ACM or the IDPms
+        // Add additional data that might be useful for the ACM, RM or the IDPms
         $req['properties'] = array();
         
         $req['properties']['SAML_RelayState']         = $state['saml:RelayState'];
@@ -834,7 +835,7 @@ class sspmod_esmo_Esmo
         );
         
         
-        // Add additional data that might be useful for the ACM or the IDPms
+        // Add additional data that might be useful for the ACM, RM or the IDPms
         $resp['properties'] = array();
         
         if(isset($state['AuthnInstant']))
@@ -914,10 +915,10 @@ class sspmod_esmo_Esmo
         
         
         
-        //Get the metadata of a random ACMms to contact
+        //Get the metadata of a random ms that implements the destination API to contact
         try{
-            $acmMetadata = sspmod_esmo_Tools::getMsMetadataByClass("ACM",$hostedIdpMeta->getString("msRegistry"));
-            SimpleSAML_Logger::debug('ESMO randomly chosen ACM metadata: '.print_r($acmMetadata,true));
+            $destMetadata = sspmod_esmo_Tools::getMsMetadataByClass("ACM",$hostedIdpMeta->getString("msRegistry"));
+            SimpleSAML_Logger::debug('ESMO randomly chosen ACM metadata: '.print_r($destMetadata,true));
         } catch (Exception $e) {
             throw new SimpleSAML_Error_Exception($e->getMessage());
         }
@@ -932,7 +933,7 @@ class sspmod_esmo_Esmo
         
         
         sspmod_esmo_Esmo::redirect(
-            $hostedIdpMeta, $acmMetadata,
+            $hostedIdpMeta, $destMetadata,
             'ACM', 'acmResponse',
             $sessionVariables,$sessionID); // TODO: verify the apiCall name is 'acmResponse'
         
