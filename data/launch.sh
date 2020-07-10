@@ -1,17 +1,26 @@
 #!/bin/bash
 
+INSTANCES="auth query"
+
 
 #Generate secure random admin password for SSP interface
-SSPADMPW="$(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w 32 | head -n 1)" && sed -i -e "s/'auth.adminpassword' => '..*',/'auth.adminpassword' => '$SSPADMPW',/" /var/www/ESMOBridge/config/config.php
+SSPADMPW="$(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w 32 | head -n 1)"
 
 #Copy input config to its proper location
 chown -R apache.apache /data/*
 
-cp -pr /data/esmo /var/www/ESMOBridge/modules/esmo
-cp -pr /data/clave /var/www/ESMOBridge/modules/clave
-cp -pr /data/varwwwESMOBridge/cert/* /var/www/ESMOBridge/cert/
-cp -pr /data/varwwwESMOBridge/config/* /var/www/ESMOBridge/config/
-cp -pr /data/varwwwESMOBridge/metadata/* /var/www/ESMOBridge/metadata/
+
+for INSTANCE in $INSTANCES; do
+  sed -i -e "s/'auth.adminpassword' => '..*',/'auth.adminpassword' => '$SSPADMPW',/" "/var/www/${INSTANCE}Bridge/config/config.php"
+
+  cp -pr /data/esmo "/var/www/${INSTANCE}Bridge/modules/esmo"
+  cp -pr /data/clave /var/www/${INSTANCE}Bridge/modules/clave
+
+  cp -pr "/data/varwww${INSTANCE}Bridge/cert/*" "/var/www/${INSTANCE}Bridge/cert/"
+  cp -pr "/data/varwww${INSTANCE}Bridge/config/*" "/var/www/${INSTANCE}Bridge/config/"
+  cp -pr "/data/varwww${INSTANCE}Bridge/metadata/*" "/var/www/${INSTANCE}Bridge/metadata/"
+done
+
 cp -pr /data/httpdssl.crt /etc/pki/tls/certs/localhost.crt
 cp -pr /data/httpdssl.key /etc/pki/tls/private/localhost.key
 
