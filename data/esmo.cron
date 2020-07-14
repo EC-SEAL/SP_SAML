@@ -1,0 +1,2 @@
+# Add here any periodic tasks to be performed
+# * * * * * wget -O /tmp/image.png https://www.domain.com/image.png
