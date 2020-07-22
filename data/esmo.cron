@@ -1,2 +1,6 @@
 # Add here any periodic tasks to be performed
-# * * * * * wget -O /tmp/image.png https://www.domain.com/image.png
+
+* * * * * export SSPROOT="/var/www/authBridge";/usr/bin/php $SSPROOT/modules/esmo/lib/CMHandler.php >> /dev/stderr
+* * * * * export SSPROOT="/var/www/queryBridge";/usr/bin/php $SSPROOT/modules/esmo/lib/CMHandler.php >> /dev/stderr
+
+#

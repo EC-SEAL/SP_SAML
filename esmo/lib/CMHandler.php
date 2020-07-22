@@ -1,8 +1,8 @@
 #!/usr/bin/php
 <?php
- 
 
-//Execute manually or over CRON. It is recommended to redirect the output to a logfile when using CRON [ >> /tmp/cmhandler.log  ]
+// Execute manually or over CRON.
+//* * * * * export SSPROOT="/var/www/queryBridge";/usr/bin/php $SSPROOT/modules/esmo/lib/CMHandler.php >> /dev/stderr
 
 
 
@@ -13,6 +13,7 @@
 //Path to the root directory of the SimpleSamlPHP installation
 //>$ export SSPROOT="/var/www/clave1bBridge"
 $sspRoot=getenv("SSPROOT");
+$sspRoot= "C:\Users\Francisco Aragó\simplesamlphp-1.18.7";
 
 
 
@@ -35,7 +36,6 @@ $cmFile = 'esmo-configmanager';
 $autoload = $sspRoot.'/lib/_autoload.php';
 
 
-
 if($sspRoot == NULL || $sspRoot == "")
     die("ERROR: Environment variable SSPROOT not set\n");
 
@@ -47,7 +47,7 @@ require_once($autoload);
 
 
 //Metadata directory
-$globalConfig = SimpleSAML_Configuration::getInstance();
+$globalConfig = SimpleSAML\Configuration::getInstance();
 $metadataDirectory = $globalConfig->getString('metadatadir', 'metadata/');
 $metadataDirectory = $globalConfig->resolvePath($metadataDirectory) . '/';
 
@@ -76,7 +76,7 @@ function getCmMetadataFile($metadataDirectory,$set){
     if(!isset($esmoConfigManagerConf))
         throw new SimpleSAML_Error_Exception("Config Manager data in ".$set.": malformed or undefined global esmoConfigManagerConf variable");
     
-    return SimpleSAML_Configuration::loadFromArray($esmoConfigManagerConf);
+    return SimpleSAML\Configuration::loadFromArray($esmoConfigManagerConf);
 }
 
 
@@ -119,7 +119,7 @@ function getURL($url){
     
     $headers = array();
     $headers[] = 'Accept: application/json';
-    SimpleSAML_Logger::debug('Headers passed:'.print_r($headers,true));
+    SimpleSAML\Logger::debug('Headers passed:'.print_r($headers,true));
 		
     $curl = curl_init();
     curl_setopt($curl, CURLOPT_URL, $url);
@@ -138,8 +138,8 @@ function getURL($url){
     }
     
     $info = curl_getinfo($curl);
-    //SimpleSAML_Logger::debug('Raw sent HTTP request:'.$info['request_header']);
-    //SimpleSAML_Logger::debug('Raw received HTTP response:'.$response);
+    //SimpleSAML\Logger::debug('Raw sent HTTP request:'.$info['request_header']);
+    //SimpleSAML\Logger::debug('Raw received HTTP response:'.$response);
         
     $header_size  = $info['header_size'];
     $headerstr    = substr($response, 0, $header_size);
@@ -151,23 +151,31 @@ function getURL($url){
     if (strpos($info['http_code'], '2') !== 0){
         throw new SimpleSAML_Error_Exception("Server returned error HTTP code: ".$info['http_code'].' -> '.$resp_body);
     }
-    //SimpleSAML_Logger::debug('Response body:'.$resp_body);
+    //SimpleSAML\Logger::debug('Response body:'.$resp_body);
     
     return $resp_body;
 }
-    
 
 
-function fetchMetadataDataset ($url){
-    
+function fetchMetadataDataset ($cmHandlerMetadata, $url){
+
+    $keyID = sspmod_esmo_HttpSig_Client::get_sha256_fingerprint($cmHandlerMetadata->getString('rsaPublicKeyBinary',NULL));
+    $clientKey = $cmHandlerMetadata->getString('rsaPrivateKeyBinary',NULL);
+    $serverPubKeys = array($cmHandlerMetadata->getString('cmRsaPublicKeyBinary',NULL));
+
+
+    //Create an HTTPSig client helper
+    $httpsig = new sspmod_esmo_HttpSig_Fetch($keyID, $clientKey, $serverPubKeys);
+
     //Grab the metadata set from the CM
-    $jsonStr = getURL($url);
-    
-    
-    //Decode the JSON
-    $obj = json_decode($jsonStr, TRUE);
+    //$jsonStr = getURL($url);
+    $obj = $httpsig->get($url); // Now it returns an array object
+
+
+//    //Decode the JSON //Now it comes decoded
+//    $obj = json_decode($jsonStr, TRUE);
     if($obj === NULL){
-        SimpleSAML_Logger::debug("JSON validation error #".json_last_error().": please, validate the content retrieved from $url: ".$input);
+        SimpleSAML\Logger::debug("JSON validation error #".json_last_error().": please, validate the content retrieved from $url: ".$obj);
         throw new SimpleSAML_Error_Exception("Error validating JSON retrieved from $url");
     }
     
@@ -179,44 +187,42 @@ function fetchMetadataDataset ($url){
 
 
 
-
 //Write the microservice registry on its expected location after
 //passing some strucutre tests and backing up previous value
-function buildMsRegistry ($url,$filepath) {
-    
+function buildMsRegistry ($config, $url,$filepath)
+{
+
     //Grab the microservice Registry from the CM
-    $msRegistry = fetchMetadataDataset($url);
-    //SimpleSAML_Logger::debug('Microservice Registry:'.print_r($msRegistry,true));
-    
-    
-    
+    $msRegistry = fetchMetadataDataset($config, $url);
+    //SimpleSAML\Logger::debug('Microservice Registry:'.print_r($msRegistry,true));
+
+
     //Perform the checks
-    if(!isset($msRegistry[0]))
+    if (!isset($msRegistry[0]))
         throw new SimpleSAML_Error_Exception("Empty ms registry");
-    foreach($msRegistry as $ms){
-        if(!isset($ms['msId']))
+    foreach ($msRegistry as $ms) {
+        if (!isset($ms['msId']))
             throw new SimpleSAML_Error_Exception("Malformed ms entry: no msId");
-        if(!isset($ms['rsaPublicKeyBinary']))
+        if (!isset($ms['rsaPublicKeyBinary']))
             throw new SimpleSAML_Error_Exception("Malformed ms entry: no rsaPublicKeyBinary");
-        if(!isset($ms['publishedAPI']))
+        if (!isset($ms['publishedAPI']))
             throw new SimpleSAML_Error_Exception("Malformed ms entry: no publishedAPI");
     }
-    
+
     //Dump the expected PHP object
-    $output = "<?php\n\n\$esmoMicroservices = ".var_export($msRegistry,TRUE).';';
-    
-    
-    
+    $output = "<?php\n\n\$esmoMicroservices = " . var_export($msRegistry, TRUE) . ';';
+
+
     //Backup the former file
-    if(!copy($filepath, $filepath.'.bak'))
-        throw new SimpleSAML_Error_Exception("Error backing up $filepath to $filepath".".bak. Cehck path exists and user permissions");
-    
+    if (!copy($filepath, $filepath . '.bak')) {
+        //throw new SimpleSAML_Error_Exception("Error backing up $filepath to $filepath" . ".bak. Check path exists and user permissions");
+        SimpleSAML\Logger::warning("Error backing up $filepath to $filepath" . ".bak. Check path exists and user permissions");
+    }
     //Write the dumped object to the proper metadata set file (overwriting previous version)
-    if(!file_put_contents($filepath,$output))
-        throw new SimpleSAML_Error_Exception('Error: could not write MsRegistry object to file: '.$filepath);
+    if (!file_put_contents($filepath, $output)) {
+        throw new SimpleSAML_Error_Exception('Error: could not write MsRegistry object to file: ' . $filepath);
+    }
 }
-
-
 
 
 
@@ -229,9 +235,7 @@ function buildMsRegistry ($url,$filepath) {
 
 //Load the CMHandler configuration
 $cmHandlerMetadata = getCmMetadataFile($metadataDirectory,$cmFile);
-SimpleSAML_Logger::debug('CMHandler config:'.print_r($cmHandlerMetadata,true));
-
-
+SimpleSAML\Logger::debug('CMHandler config:'.print_r($cmHandlerMetadata,true));
 
 
 
@@ -240,15 +244,16 @@ $set = $cmHandlerMetadata->getString('msRegistry',"");
 if($set == "")
     throw new SimpleSAML_Error_Exception("msRegistry config field on CMHandler config empty or unset");
 
-buildMsRegistry($cmHandlerMetadata->getString('msRegistryUrl'), $metadataDirectory.'/'.$set.'.php');
+buildMsRegistry($cmHandlerMetadata, $cmHandlerMetadata->getString('msRegistryUrl'), $metadataDirectory.'/'.$set.'.php');
 
-    
+
+// TODO: SEGUIR. asegurarme de que el resto se escriben bien (subir los de prueba al server). Ver qué pasa con el bak.
 
 
 //Get the metadata of a random CM (so we can minimise the load of the bootstrapping URL CM)
 try{
     $cmMetadata = sspmod_esmo_Tools::getMsMetadataByClass("CM",$cmHandlerMetadata->getString("msRegistry"));
-    SimpleSAML_Logger::debug('ESMO randomly chosen Config Manager metadata: '.print_r($cmMetadata,true));
+    SimpleSAML\Logger::debug('ESMO randomly chosen Config Manager metadata: '.print_r($cmMetadata,true));
 } catch (Exception $e) {
     throw new SimpleSAML_Error_Exception($e->getMessage());
 }
@@ -268,7 +273,7 @@ $baseurl = getApiURL($cmMetadata,'CM','externalEntities');
 
 //For each managed set, fetch and filter the source collections
 foreach($managedSets as $setName => $setData){
-    SimpleSAML_Logger::debug('Building set: '.$setName);
+    SimpleSAML\Logger::debug('Building set: '.$setName);
     
     $collections = $setData['collections'];
     $variable    = $setData['variable'];
@@ -282,8 +287,8 @@ foreach($managedSets as $setName => $setData){
     foreach($collections as $collection){
         
         //Grab the collection from the CM        
-        $thisSet = fetchMetadataDataset($baseurl."/".$collection);
-        SimpleSAML_Logger::debug('Retrieved collection -'.$baseurl.'/'.$collection.'-:'.print_r($thisSet,true));
+        $thisSet = fetchMetadataDataset($cmHandlerMetadata, $baseurl."/".$collection);
+        SimpleSAML\Logger::debug('Retrieved collection -'.$baseurl.'/'.$collection.'-:'.print_r($thisSet,true));
         
         //Accumulate
         $entities = array_merge($entities,$thisSet);

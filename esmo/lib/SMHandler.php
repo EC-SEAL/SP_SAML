@@ -66,9 +66,13 @@ class sspmod_esmo_SMHandler {
         
         $this->metadata   = $metadata;
         $this->smMetadata = $smMetadata;
-        
+
+        $keyID = sspmod_esmo_HttpSig_Client::get_sha256_fingerprint($metadata->getString('rsaPublicKeyBinary',NULL));
+        $clientKey = $metadata->getString('rsaPrivateKeyBinary',NULL);
+        $serverPubKeys = array($smMetadata->getString('rsaPublickKeyBinary',NULL));
+
         //Create an HTTPSig client helper
-        $this->httpsig = new sspmod_esmo_HttpSig_Fetch($metadata, $smMetadata);
+        $this->httpsig = new sspmod_esmo_HttpSig_Fetch($keyID, $clientKey, $serverPubKeys);
     }
     
     

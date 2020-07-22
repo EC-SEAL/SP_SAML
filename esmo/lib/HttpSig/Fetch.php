@@ -18,11 +18,10 @@ class sspmod_esmo_HttpSig_Fetch
     
     
     
-    public function __construct($metadata, $smMetadata){
+    public function __construct($keyID, $clientKey, $serverPubKeys){
         
-        $this->keyId = sspmod_esmo_HttpSig_Client::get_sha256_fingerprint($metadata->getString('rsaPublicKeyBinary',NULL));
-        
-        $this->privateKey = $metadata->getString('rsaPrivateKeyBinary',NULL);
+        $this->keyId = $keyID;
+        $this->privateKey = $clientKey;
 
         //The PEM headers and the 64 char lines division are needed, so we check:
         if(!preg_match("/BEGIN RSA PRIVATE KEY/",$this->privateKey)){
@@ -31,7 +30,7 @@ class sspmod_esmo_HttpSig_Fetch
                 ."-----END RSA PRIVATE KEY-----\n";
         }
         
-        $this->trustedKeys = array($smMetadata->getString('rsaPublickKeyBinary',NULL));
+        $this->trustedKeys = $serverPubKeys;
     }
     
     
