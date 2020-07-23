@@ -175,8 +175,8 @@ function fetchMetadataDataset ($cmHandlerMetadata, $url){
 //    //Decode the JSON //Now it comes decoded
 //    $obj = json_decode($jsonStr, TRUE);
     if($obj === NULL){
-        SimpleSAML\Logger::debug("JSON validation error #".json_last_error().": please, validate the content retrieved from $url: ".$obj);
-        throw new SimpleSAML_Error_Exception("Error validating JSON retrieved from $url");
+        SimpleSAML\Logger::warning("JSON validation error #".json_last_error().": please, validate the content retrieved from $url: ".$obj);
+        //throw new SimpleSAML_Error_Exception("Error validating JSON retrieved from $url");
     }
     
     return $obj;
@@ -220,7 +220,8 @@ function buildMsRegistry ($config, $url,$filepath)
     }
     //Write the dumped object to the proper metadata set file (overwriting previous version)
     if (!file_put_contents($filepath, $output)) {
-        throw new SimpleSAML_Error_Exception('Error: could not write MsRegistry object to file: ' . $filepath);
+        //throw new SimpleSAML_Error_Exception('Error: could not write MsRegistry object to file: ' . $filepath);
+        SimpleSAML\Logger::warning('Error: could not write MsRegistry object to file: ' . $filepath);
     }
 }
 
@@ -245,9 +246,6 @@ if($set == "")
     throw new SimpleSAML_Error_Exception("msRegistry config field on CMHandler config empty or unset");
 
 buildMsRegistry($cmHandlerMetadata, $cmHandlerMetadata->getString('msRegistryUrl'), $metadataDirectory.'/'.$set.'.php');
-
-
-// TODO: SEGUIR. asegurarme de que el resto se escriben bien (subir los de prueba al server). Ver qué pasa con el bak.
 
 
 //Get the metadata of a random CM (so we can minimise the load of the bootstrapping URL CM)
@@ -284,14 +282,28 @@ foreach($managedSets as $setName => $setData){
     
     //Get the collections
     $entities = array();
+    $allErrors = True;
     foreach($collections as $collection){
-        
-        //Grab the collection from the CM        
-        $thisSet = fetchMetadataDataset($cmHandlerMetadata, $baseurl."/".$collection);
-        SimpleSAML\Logger::debug('Retrieved collection -'.$baseurl.'/'.$collection.'-:'.print_r($thisSet,true));
-        
+        $thisSet = NULL;
+
+        try{
+            //Grab the collection from the CM
+            $thisSet = fetchMetadataDataset($cmHandlerMetadata, $baseurl."/".$collection);
+            SimpleSAML\Logger::debug('Retrieved collection -'.$baseurl.'/'.$collection.'-:'.print_r($thisSet,true));
+            $allErrors = False;
+        }catch (Exception $err) {
+            SimpleSAML\Logger::warning('Error retrieving external entity set: '.$err->getMessage());
+        }
+
         //Accumulate
-        $entities = array_merge($entities,$thisSet);
+        if($thisSet != NULL)
+            $entities = array_merge($entities,$thisSet);
+    }
+
+    // If no files could be retrieved, warn and leave former file as is
+    if($allErrors){
+        SimpleSAML\Logger::warning('Error retrieving all external sets for this file. Keeping former one.');
+        continue;
     }
 
     
@@ -299,9 +311,12 @@ foreach($managedSets as $setName => $setData){
     if($protocols != NULL){
 
         //If the protocol of the entity is in the list, keep it
+        // If protocol not set, keep it as well
         $filteredSet = array();
         foreach($entities as $entity)
-            if( in_array($entity['protocol'],$protocols) )
+            if( ! isset($entity['protocol'])
+            || $entity['protocol'] == NULL
+            || in_array($entity['protocol'],$protocols) )
                 $filteredSet []= $entity;
         
         $entities = $filteredSet;
@@ -323,10 +338,14 @@ foreach($managedSets as $setName => $setData){
     
     
     //Backup the former file
-    if(!copy($filepath, $filepath.'.bak'))
-        throw new SimpleSAML_Error_Exception("Error backing up $filepath to $filepath".".bak. Check that path exists and user has permissions");
-    
+    if(!copy($filepath, $filepath.'.bak')) {
+        //throw new SimpleSAML_Error_Exception("Error backing up $filepath to $filepath" . ".bak. Check that path exists and user has permissions");
+        SimpleSAML\Logger::warning("Error backing up $filepath to $filepath" . ".bak. Check that path exists and user has permissions");
+    }
+
     //Write the dumped object to the proper metadata set file (overwriting previous version)
-    if(!file_put_contents($filepath,$output))
-        throw new SimpleSAML_Error_Exception('Error: could not write '.$setName.' object to file: '.$filepath);
+    if(!file_put_contents($filepath,$output)) {
+        //throw new SimpleSAML_Error_Exception('Error: could not write '.$setName.' object to file: '.$filepath);
+        SimpleSAML\Logger::warning('Error: could not write '.$setName.' object to file: '.$filepath);
+    }
 }

@@ -464,27 +464,45 @@ class sspmod_esmo_Esmo
 	 * @param array $entityMetadata  The esmo-like entityMetadata object array.
 	 * @return array in the form of an ssp metadata array.
 	 */
-    public static function buildSspEntity(array $entityMetadata){
-        
+    public static function buildSspEntity(array $entityMetadata)
+    {
+
         //Map the basic values
-        $sspMeta = array (
-            'entityId'                => $entityMetadata['entityId'],
+        $sspMeta = array(
+            'entityId' => $entityMetadata['entityId'],
             'OrganizationDisplayName' => $entityMetadata['defaultDisplayName'],
-            'attributes'              => $entityMetadata['claims'],
-            
-            'assertion.encryption'   => $entityMetadata['encryptResponses'],
-            'assertion.encryption.keyAlgorith' => array($entityMetadata['supportedEncryptionAlg']),
-            'saml20.sign.response'   => $entityMetadata['signResponses'],
-            'signature.algorithm'    => array($entityMetadata['supportedSigningAlg']),
-            
-            'displayNames'         => $entityMetadata['displayNames'], // TODO: added by ESMO
-            'OrganizationLogo'     => $entityMetadata['logo'],         // TODO: added by ESMO
+
+
+            'assertion.encryption' => $entityMetadata['encryptResponses'],
+
+            'saml20.sign.response' => $entityMetadata['signResponses'],
+
+            'displayNames' => $entityMetadata['displayNames'], // TODO: added by ESMO
+            'OrganizationLogo' => $entityMetadata['logo'],         // TODO: added by ESMO
             'OrganizationLocation' => $entityMetadata['location'],     // TODO: added by ESMO
-            'FederationProtocol'   => $entityMetadata['protocol'],     // TODO: added by ESMO
-            'microservice'         => $entityMetadata['microservice'], // TODO: added by ESMO
+            'FederationProtocol' => $entityMetadata['protocol'],     // TODO: added by ESMO
+            'microservice' => $entityMetadata['microservice'], // TODO: added by ESMO
         );
-        
-        
+
+        if (isset($entityMetadata['claims'])) {
+            if (!is_array($entityMetadata['claims']))
+                $entityMetadata['claims'] = array($entityMetadata['claims']);
+            $sspMeta['attributes'] = $entityMetadata['claims'];
+        }
+
+        if (isset($entityMetadata['supportedSigningAlg'])) {
+            if (!is_array($entityMetadata['supportedSigningAlg']))
+                $entityMetadata['supportedSigningAlg'] = array($entityMetadata['supportedSigningAlg']);
+            $sspMeta['signature.algorithm'] = $entityMetadata['supportedSigningAlg'];
+        }
+
+        if (isset($entityMetadata['supportedEncryptionAlg'])) {
+            if (!is_array($entityMetadata['supportedEncryptionAlg']))
+                $entityMetadata['supportedEncryptionAlg'] = array($entityMetadata['supportedEncryptionAlg']);
+            $sspMeta['assertion.encryption.keyAlgorith'] = $entityMetadata['supportedEncryptionAlg'];
+        }
+
+
         //Now add any other specific purpose properties the entity
         //object might present (Please, notice that any field here
         //with the same nime as one above will override the value set
