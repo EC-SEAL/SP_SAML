@@ -126,6 +126,7 @@ function getURL($url){
     curl_setopt($curl, CURLOPT_RETURNTRANSFER, true);
     curl_setopt($curl, CURLOPT_HEADER, true);
     curl_setopt($curl, CURLOPT_HTTPHEADER, $headers);
+    curl_setopt($curl, CURLOPT_CAINFO, "/etc/ssl/certs/ca-bundle.crt");
     
     curl_setopt($curl, CURLINFO_HEADER_OUT, true); // For debugging, to return the raw request on the info
 	

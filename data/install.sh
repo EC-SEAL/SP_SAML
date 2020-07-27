@@ -45,6 +45,30 @@ tar xzf ssphp.tgz
 
 
 
+# Download clave module if not present  # TODO: works?
+if [ ! -e /data/clave/lib/ ] ; then
+  wget https://github.com/rediris-es/simplesamlphp-clave2/archive/master.zip --no-check-certificate -O clave.zip
+  unzip clave.zip
+  rm -rf /data/clave
+  mv simplesamlphp-clave2-master /data/clave
+  chown -R $HTTPDUSER:$HTTPDGRP /data/clave
+  chmod -R o-rwx /data/clave
+  chmod -R g-w /data/clave
+fi
+
+# Download esmo module if not present  # TODO: works? update url
+if [ ! -e /data/esmo/lib/ ] ; then
+  wget https://github.com/faragom/ESMO_SAML/archive/master.zip --no-check-certificate -O esmo.zip
+  unzip esmo.zip
+  rm -rf /data/esmo
+  mv ESMO_SAML-master/esmo /data/
+  chown -R $HTTPDUSER:$HTTPDGRP /data/esmo
+  chmod -R o-rwx /data/esmo
+  chmod -R g-w /data/esmo
+fi
+
+
+
 for INSTANCE in $INSTANCES; do
 
   echo "--> Deploying instance $INSTANCE"
@@ -82,6 +106,10 @@ for INSTANCE in $INSTANCES; do
   sed -i $CFGFILE -re "s|^(.*'session.cookie.name'\s+=>\s+)[^,]+,|\1SimpSAMLSessIDSEAL$INSTANCE,|g"
   sed -i $CFGFILE -re "s|^(.*'session.phpsession.cookiename'\s+=>\s+)[^,]+,|\1SimpSAMLSEAL$INSTANCE,|g"
   sed -i $CFGFILE -re "s|^(.*'session.authtoken.cookiename'\s+=>\s+)[^,]+,|\1SimpSAMLAuthTokenSEAL$INSTANCE,|g"
+
+  #Copy modules to instance module dir (now we install the code, not on launch)  # TODO: works?
+  cp -pr /data/esmo "$BASEDIRNAME/modules/esmo"
+  cp -pr /data/clave "$BASEDIRNAME/modules/clave"
 
   #We move the instance to its destination
   mv -v $BASEDIRNAME  $BASEDIR/$BASEDIRNAME

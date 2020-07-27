@@ -813,7 +813,7 @@ class sspmod_esmo_Esmo
                         'encoding'     => NULL,
                         'language'     => NULL,
                         'isMandatory'  => false,
-                        'values'       => $values,
+                        'values'       => $attribute['values'],
                     );
                 }
             }
