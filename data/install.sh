@@ -11,7 +11,7 @@ INSTANCES="auth query"
 
 BASEDIR="/var/www"
 PUBDIR="/var/www/html"
-BACKUPDIR="$BASEDIR"
+#BACKUPDIR="$BASEDIR"
 HTTPDUSER="apache"
 HTTPDGRP="apache"
 SSPHPURL="https://simplesamlphp.org/download?latest"
@@ -38,15 +38,21 @@ mkdir -p "$TMPDIR"
 wget "$SSPHPURL" -O $TMPDIR/ssphp.tgz
 [ $? -ne 0 ] && echo "[!] Error downloading SSPHP from $SSPHPURL" && exit 1
 
-pushd $TMPDIR
+pushd $TMPDIR || echo "pushd $TMPDIR failed"; exit 1
 
 #Deploy SSPHP
 tar xzf ssphp.tgz
 
 
+echo "current path:"
+pwd
+echo "********/data/*************"
+ls -l /data
+echo "*********************"
+
 
 # Download clave module if not present  # TODO: works?
-if [ ! -e /data/clave/lib/ ] ; then
+if [ ! -d /data/clave/lib/ ] ; then
   wget https://github.com/rediris-es/simplesamlphp-clave2/archive/master.zip --no-check-certificate -O clave.zip
   unzip clave.zip
   rm -rf /data/clave
@@ -57,7 +63,7 @@ if [ ! -e /data/clave/lib/ ] ; then
 fi
 
 # Download esmo module if not present  # TODO: works? update url
-if [ ! -e /data/esmo/lib/ ] ; then
+if [ ! -d /data/esmo/lib/ ] ; then
   wget https://github.com/faragom/ESMO_SAML/archive/master.zip --no-check-certificate -O esmo.zip
   unzip esmo.zip
   rm -rf /data/esmo
@@ -122,7 +128,7 @@ for INSTANCE in $INSTANCES; do
 
 done
 
-popd
+popd || echo "popd failed"; exit 1
 
 # TODO: que al final se haga el chown al user y group que toca # No está ya hecho?
 
@@ -135,4 +141,3 @@ rm -rf "$TMPDIR"
 echo **************************++
 echo ** $SSADMINPWD
 echo **************************++
-
