@@ -38,7 +38,7 @@ mkdir -p "$TMPDIR"
 wget "$SSPHPURL" -O $TMPDIR/ssphp.tgz
 [ $? -ne 0 ] && echo "[!] Error downloading SSPHP from $SSPHPURL" && exit 1
 
-pushd $TMPDIR || echo "pushd $TMPDIR failed"; exit 1
+pushd $TMPDIR || echo "pushd $TMPDIR failed"
 
 #Deploy SSPHP
 tar xzf ssphp.tgz
@@ -128,7 +128,7 @@ for INSTANCE in $INSTANCES; do
 
 done
 
-popd || echo "popd failed"; exit 1
+popd || echo "popd failed"
 
 # TODO: que al final se haga el chown al user y group que toca # No está ya hecho?
 
