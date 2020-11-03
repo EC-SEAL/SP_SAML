@@ -204,6 +204,56 @@ $state['eidas:struct:assertions'] = $assertions;
 SimpleSAML_Logger::info("Standard list Attributes: ".print_r($attributes,true));
 
 
+// On SEAL we needed to deploy multiple coordinated instances, but we are limited
+// to a single comeback point. It's not a problem to come back to an instance that
+// does not match the original one because the state is on the SM, so we don't care
+// which instance gets it back, but the SAML IDP tries to load the IDP instance that
+// handled the request and fails to find it on the other instance. In the eIDAS IDP,
+// it works because we don't support multiple IDP instances, but on the standard IdP
+// it's a problem. In any case, we patch this so, we define a default return instance,
+// and if the state points to another instance, we replace the basename of the instance
+// to the current one, which is the comeback one.
+
+// Get the name of the instance the response will have arrived to
+$defaultInstance = $metadata->getString("defaultInstance");
+
+//On eIDAS idp requests, it seems not to be set
+if(isset($state['core:IdP'])) {
+    $idpID = $state['core:IdP'];
+
+    //We remove the class identifier of the IDP (will always be 'saml2:' or similar)
+    $idpID = explode(':', $idpID, 2);
+
+    $classID = $idpID[0];
+    $idpURL = $idpID[1];
+
+    //Break the url of the entityID of the actual idp it was used
+    $idpURL = parse_url($idpURL);
+
+    //If the base path of the idp ID does not match the base url of
+    // the default instance, change it to the proper value
+    $urlPath = $idpURL['path'];
+    $urlDict = explode('/', $urlPath, 3);
+    $basePath = $urlDict[1];
+    if ($basePath != $defaultInstance) {
+        $urlDict[1] = $defaultInstance;
+        $urlPath = implode("/", $urlDict);
+    }
+
+    //Rebuild IdP identifier
+    $rebuiltURL = "";
+    if (isset($idpURL['scheme']))
+        $rebuiltURL .= $idpURL['scheme'] . "://";
+    if (isset($idpURL['host']))
+        $rebuiltURL .= $idpURL['host'];
+    if (isset($idpURL['port']))
+        $rebuiltURL .= ":" . $idpURL['port'];
+    $rebuiltURL .= $urlPath;
+
+    $state['core:IdP'] = $classID . ":" . $rebuiltURL;
+}
+
+
 //Pass the response state to the ESMO SP
 $source->handleResponse($state, $remoteIdPMeta->getString('msId', NULL), $attributes);
 

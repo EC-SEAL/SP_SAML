@@ -16,6 +16,7 @@ $config = array(
         'apiCall' => 'rmRequest',
         //'noWriteParams' => [''],
         'spRequestEP' => 'auth',
+        'defaultInstance' => 'query',
     ),
 
     //Base configuration of an eIDAS Auth Source
