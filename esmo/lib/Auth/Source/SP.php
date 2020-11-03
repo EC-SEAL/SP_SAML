@@ -202,6 +202,9 @@ class sspmod_esmo_Auth_Source_SP extends SimpleSAML_Auth_Source {
         
         //We use the remote SP as the issuer of the internal SP request object
         $state['esmo:req:issuer']  = $state['eidas:requestData']['issuer'];
+        if($state['esmo:req:issuer'] == NULL){
+            $state['esmo:req:issuer'] = $remoteSpMeta->getString('entityid','default_issuer');
+        }
 
         //Get the api class and call to pass the request to
         $state['esmo:req:apiClass']  = $this->metadata->getString("apiClass", 'ACM');
