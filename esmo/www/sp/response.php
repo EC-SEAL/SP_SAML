@@ -136,7 +136,7 @@ foreach($responseAssertions as $responseAssertion){
         $attrib = array(
             'name'         => $attribute['name'],
             'friendlyName' => $attribute['friendlyName'],
-            'isMandatory'  => $attribute['isMandatory'],
+            'mandatory'  => $attribute['mandatory'],
             'values'       => $attribute['values'],
         );
         

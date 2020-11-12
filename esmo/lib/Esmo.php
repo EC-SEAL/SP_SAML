@@ -70,7 +70,7 @@ class sspmod_esmo_Esmo
 
                 $friendlyName = NULL;
                 $name         = NULL;
-                $isMandatory  = false;
+                $mandatory  = false;
                 
                 if(array_key_exists('friendlyName', $attr))
                     $friendlyName = $attr['friendlyName'];
@@ -79,7 +79,7 @@ class sspmod_esmo_Esmo
                     $name = $attr['name'];
 
                 if(array_key_exists('isRequired', $attr))
-                    $isMandatory = $attr['isRequired'];
+                    $mandatory = $attr['isRequired'];
                 
                 
                 // TODO: add support to read the values of the attributes // TODO: does it work?
@@ -92,7 +92,7 @@ class sspmod_esmo_Esmo
                     'friendlyName' => $friendlyName,
                     'encoding' => NULL,
                     'language' => NULL,
-                    'isMandatory' => $isMandatory,
+                    'mandatory' => $mandatory,
                     'values' => $values,
                 );
                 
@@ -107,7 +107,7 @@ class sspmod_esmo_Esmo
                     'friendlyName' => $attr,
                     'encoding' => NULL,
                     'language' => NULL,
-                    'isMandatory' => false,
+                    'mandatory' => false,
                     'values' => NULL,
                 );
             }
@@ -358,7 +358,7 @@ class sspmod_esmo_Esmo
             $reqData['requestedAttributes'] []= array(
                 'name'         => $attribute['name'],
                 'friendlyName' => $attribute['friendlyName'],
-                'isRequired'   => $attribute['isMandatory'],
+                'isRequired'   => $attribute['mandatory'],
                 'values'       => $attribute['values'],
             );
         }
@@ -379,7 +379,7 @@ class sspmod_esmo_Esmo
                 $reqData['requestedAttributes'] []= array(
                     'name'         => $authAttr['name'],
                     'friendlyName' => $authAttr['friendlyName'],
-                    'isRequired'   => $authAttr['isMandatory'],
+                    'isRequired'   => $authAttr['mandatory'],
                     'values'       => $authAttr['values'],
                 );
             }
@@ -812,7 +812,7 @@ class sspmod_esmo_Esmo
                         'name'         => $attribute['name'],
                         'encoding'     => NULL,
                         'language'     => NULL,
-                        'isMandatory'  => false,
+                        'mandatory'  => false,
                         'values'       => $attribute['values'],
                     );
                 }
@@ -838,7 +838,7 @@ class sspmod_esmo_Esmo
                      'name'         => $attributefullname,
                      'encoding'     => NULL,
                      'language'     => NULL,
-                     'isMandatory'  => false,
+                     'mandatory'  => false,
                      'values'       => $values,
                  );
             }
