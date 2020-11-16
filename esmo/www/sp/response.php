@@ -51,6 +51,51 @@ $sessionVars = array(
 //returned)
 $ret = sspmod_esmo_Esmo::resume($msToken, $metadata, $sessionVars);
 
+
+// TODO: verify it works
+
+//Get the expected return url on the session
+$returnPage = "";
+if (isset($ret['variables']['samlMSstate']['esmo:sp:returnPage']))
+    $returnPage = $ret['variables']['samlMSstate']['esmo:sp:returnPage'];
+$returnBase = sspmod_esmo_Tools::getBasePath($returnPage);
+
+//Get the actual URL that has been called (to guess which instance we are in)
+$currUrlPath = $_SERVER['REQUEST_URI'];
+$currBase = sspmod_esmo_Tools::getBasePath($currUrlPath);
+
+//If destination was not the expected one (and we have a destination)
+if($currBase != $returnBase && $returnPage != ""){
+    SimpleSAML_Logger::debug('*********Wrong destination instance detected. Redirecting.');
+
+    $sessionID = $ret['sessionID'];
+
+    //Get the microservice metadata of the SessionMgr
+    $smMetadata = sspmod_esmo_Tools::getMsMetadataByClass("SM",$metadata->getString("msRegistry"));
+    SimpleSAML_Logger::debug('ESMO randomly chosen SessionMgr metadata: '.print_r($smMetadata,true));
+
+
+    //Instantiate the SM handler object
+    $smHandler = new sspmod_esmo_SMHandler($metadata, $smMetadata);
+    $smHandler->setSessID($sessionID);
+
+
+    //Generate a new msToken (from this to self)
+    $token = $smHandler->generateToken($metadata->getString('msId', NULL),
+                                       $metadata->getString('msId', NULL));
+
+    //POST params to send
+    $post = array('msToken'  => $token);
+
+    //Redirecting to destination microservice (with HTTP-POST)
+    SimpleSAML_Utilities::postRedirect($returnPage, $post);
+}
+
+
+
+
+
+
 $sessionID = $ret['sessionID'];
 $extraData = $ret['extraData'];
 
@@ -203,6 +248,14 @@ $state['eidas:struct:assertions'] = $assertions;
 
 SimpleSAML_Logger::info("Standard list Attributes: ".print_r($attributes,true));
 
+/*
+ * This solution is commented out because it had holes in it: it broke SAML-eIDAS
+ * requests (where the ID of the IDP was not a url, so it added weird suffix); it
+ * also didn't ork for the end SP, because the issuer of the response the SP
+ * received was not the expected issuer, but this one. So the solution needs to redirect
+ * to the proper IdP.
+ *
+
 
 // On SEAL we needed to deploy multiple coordinated instances, but we are limited
 // to a single comeback point. It's not a problem to come back to an instance that
@@ -252,6 +305,7 @@ if(isset($state['core:IdP'])) {
 
     $state['core:IdP'] = $classID . ":" . $rebuiltURL;
 }
+*/
 
 
 //Pass the response state to the ESMO SP

@@ -98,5 +98,18 @@ class sspmod_esmo_Tools {
         
         return SimpleSAML_Configuration::loadFromArray($found[$chosen]);
     }
-    
+
+
+    public static function getBasePath($url)
+    {
+        $urlObj = parse_url($url);
+        $urlPath = $urlObj['path'];
+        $urlDict = explode('/', $urlPath, 3);
+        if($urlDict == NULL || !isset($urlDict[1]))
+            return "";
+        $basePath = $urlDict[1];
+        if($basePath == NULL)
+            return "";
+        return $basePath;
+    }
 }
